@@ -1,0 +1,22 @@
+{
+    "name": "leadtech/csv-filter",
+    "description": "A simple command line utility to extract specific rows from a CSV file",
+    "type": "project",
+    "require": {
+        "PHP": "^7.1",
+        "leadtech/boot-framework": "^3.3"
+    },
+    "license": "WTFPL",
+    "authors": [
+        {
+            "name": "Daan Biesterbos",
+            "email": "d.biesterbos@leadtech.nl"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Leadtech\\": "src/Leadtech/"
+        }
+    },
+    "minimum-stability": "dev"
+}
