@@ -54,8 +54,11 @@ class CsvFilterCommand extends Command
         $this->setDescription('Move cache files to sub directories.')
             ->addOption('--in', '-i', InputOption::VALUE_REQUIRED, 'Expects absolute path or a filename to store the file in the same folder as the input file.')
             ->addOption('--out', '-o', InputOption::VALUE_REQUIRED, 'Expects absolute path or a filename to store the file in the same folder as the input file.')
+            ->addOption('--skip-column', '-sC', InputOption::VALUE_REQUIRED|InputOption::VALUE_IS_ARRAY, 'To skip columns provide one or more column numbers to skip. Note that column numbers start at 0.', [])
             ->addOption('--search', '-s', InputOption::VALUE_REQUIRED|InputOption::VALUE_IS_ARRAY, 'Enter a number of search terms, if the string is found than we', [])
             ->addOption('--filter', '-f', InputOption::VALUE_REQUIRED|InputOption::VALUE_IS_ARRAY, 'Enter a number of search terms, if the string is found than we', [])
+            ->addOption('--csv-separator', '-sep', InputOption::VALUE_REQUIRED, 'Enter the CSV separator. Defaults to a comma.', ',')
+            ->addOption('--csv-enclosing-char', '-enc', InputOption::VALUE_REQUIRED, 'Enter enclosing character. Defaults to a double quote.', '"')
             ->addOption('--with-headers', '-wh', InputOption::VALUE_NONE, 'Whether the first line of the CSV file contains headers.')
             ->addOption('--columns', '-c', InputOption::VALUE_REQUIRED|InputOption::VALUE_IS_ARRAY,  'Optionally enter the column numbers for each column that should be evaluated. All columns are evaluated by default.', []);
     }
@@ -131,6 +134,7 @@ class CsvFilterCommand extends Command
     protected function processFile(string $inputFile, string $outputFile) : bool
     {
         $columnNumbers = $this->input->getOption('columns');
+        $skippedColumnNumbers = $this->input->getOption('skip-column');
 
         // Gets the search terms and filters, when the line matches the given term, the line will be added to the output.
         // UNLESS the line matches a filter. All lines that match a filter are always excluded from the output file.
@@ -149,26 +153,39 @@ class CsvFilterCommand extends Command
         // Read the CSV
         $isFirstLine = true;
         $csvLineCount = 0;
-        while ($cols = fgetcsv($in)) {
+        $csvSeparator = $this->input->getOption('csv-separator');
+        $csvEncCharacter = $this->input->getOption('csv-separator');
+        while ($columns = fgetcsv($in, 0, $csvSeparator, $csvEncCharacter)) {
+            $filteredColumns = [];
 
             $this->io->progressAdvance($csvLineCount++);
+
+            // Filter columns
+            if (is_array($skippedColumnNumbers)) {
+                foreach ($columns as $colNum => $columnValue) {
+                    if (!in_array($colNum, $skippedColumnNumbers)) {
+                        $filteredColumns[$colNum] = $columnValue;
+                    }
+                }
+            }
 
             // Deals with possible headers on the first line
             if ($isFirstLine) {
                 $isFirstLine = false;
                 if ($this->input->hasOption('with-headers')) {
-                    fputcsv($out, $cols);
+                    fputcsv($out, $filteredColumns, $csvSeparator, $csvEncCharacter);
                     continue;
                 }
             }
 
             // If no column numbers are provided, get the column numbers from the actual data.
             if (empty($columnNumbers)) {
-                $columnNumbers = array_keys($cols);
+                $columnNumbers = array_keys($filteredColumns);
             }
 
             foreach ($columnNumbers as $columnNumber) {
-                $columnValue = @$cols[$columnNumber];
+                $columnValue = preg_replace('/"+/', '"', @$filteredColumns[$columnNumber]);
+                $cols[$columnNumber] = $columnValue;
                 foreach ($filterTerms as $filterTerm) {
                     if (strpos(strtolower($columnValue), strtolower($filterTerm)) !== false) {
                         continue 3;
@@ -189,7 +206,7 @@ class CsvFilterCommand extends Command
                 }
                 foreach ($searchTerms as $searchTerm) {
                     if (strpos(strtolower($columnValue), strtolower($searchTerm)) !== false) {
-                        fputcsv($out, $cols);
+                        fputcsv($out, $filteredColumns);
                         continue 3;
                     } else {
                         // If the string contains of multiple words try if the value does match the query but in different order.
@@ -202,7 +219,7 @@ class CsvFilterCommand extends Command
                             }
                         }
                         if ($isMatch) {
-                            fputcsv($out, $cols);
+                            fputcsv($out, $filteredColumns, $csvSeparator, $csvEncCharacter);
                             continue 3;
                         }
                     }

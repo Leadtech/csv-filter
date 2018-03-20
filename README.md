@@ -26,8 +26,10 @@ composer install
 ## Usage Examples
 ```
 # Will match all horloges from guess
-bin/console csv:filter --in=testfiles/products.csv --out=testfiles/out2.csv --search="horloges guess"
+bin/console csv:filter --in=testfiles/products.csv --out=testfiles/out2.csv --search="horloges guess" --csv-separator=';'
+
+bin/console csv:filter --in=testfiles/products.csv --out=testfiles/out3.csv --search="horloges guess" --skip-column=1 --skip-column=4 --csv-separator=';'
 
 # Will match only horloges
-bin/console csv:filter --in=testfiles/products.csv --out=testfiles/out2.csv --search="horloges guess" --filter="vrouw --filter="dame"
+bin/console csv:filter --in=testfiles/products.csv --out=testfiles/out2.csv --search="horloges guess" --filter="vrouw --filter="dame"  --csv-separator=';'
 ```

@@ -1,0 +1,6 @@
+# IDE
+.idea
+*.iml
+
+# Excluded project files & folders
+tmp
